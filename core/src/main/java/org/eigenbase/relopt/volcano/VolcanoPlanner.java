@@ -1539,6 +1539,7 @@ public class VolcanoPlanner extends AbstractRelOptPlanner {
       set = set.equivalentSet;
     }
     registerCount++;
+    final int subsetBeforeCount = set.subsets.size();
     RelSubset subset = asd(rel, set);
 
     final RelNode xx = mapDigestToRel.put(key, rel);
@@ -1587,6 +1588,11 @@ public class VolcanoPlanner extends AbstractRelOptPlanner {
 
     // Queue up all rules triggered by this relexp's creation.
     fireRules(rel, true);
+
+    // It's a new subset.
+    if (set.subsets.size() > subsetBeforeCount) {
+      fireRules(subset, true);
+    }
 
     return subset;
   }

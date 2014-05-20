@@ -33,6 +33,7 @@ import net.hydromatic.optiq.rules.java.EnumerableConvention;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.*;
 
 /**
@@ -114,6 +115,39 @@ public class VolcanoPlannerTest {
     planner.setRoot(convertedRel);
     RelNode result = planner.chooseDelegate().findBestExp();
     assertTrue(result instanceof PhysSingleRel);
+  }
+
+  /**
+   * Tests a rule that is fired once per subset (whereas most rules are fired
+   * once per rel in a set or rel in a subset)
+   */
+  @Test public void testSubsetRule() {
+    VolcanoPlanner planner = new VolcanoPlanner();
+    planner.addRelTraitDef(ConventionTraitDef.INSTANCE);
+
+    planner.addRule(new PhysLeafRule());
+    planner.addRule(new GoodSingleRule());
+    final List<String> buf = new ArrayList<String>();
+    planner.addRule(new SubsetRule(buf));
+
+    RelOptCluster cluster = newCluster(planner);
+    NoneLeafRel leafRel =
+        new NoneLeafRel(
+            cluster,
+            "a");
+    NoneSingleRel singleRel =
+        new NoneSingleRel(
+            cluster,
+            leafRel);
+    RelNode convertedRel =
+        planner.changeTraits(
+            singleRel,
+            cluster.traitSetOf(PHYS_CALLING_CONVENTION));
+    planner.setRoot(convertedRel);
+    RelNode result = planner.chooseDelegate().findBestExp();
+    assertTrue(result instanceof PhysSingleRel);
+    assertThat(buf.size(), equalTo(1));
+    assertThat(buf.toString(), equalTo("xxx"));
   }
 
   /**
@@ -602,6 +636,27 @@ public class VolcanoPlannerTest {
           new PhysSingleRel(
               singleRel.getCluster(),
               physInput));
+    }
+  }
+
+  private static class SubsetRule extends RelOptRule {
+    private final List<String> buf;
+
+    SubsetRule(List<String> buf) {
+      super(operand(NoneSingleRel.class, operand(RelSubset.class, any())));
+      this.buf = buf;
+    }
+
+    public Convention getOutConvention() {
+      return PHYS_CALLING_CONVENTION;
+    }
+
+    public void onMatch(RelOptRuleCall call) {
+      // Do not transform to anything; just log the calls.
+      NoneSingleRel singleRel = call.rel(0);
+      RelNode childRel = call.rel(1);
+      assertThat(call.rels.length, equalTo(2));
+      buf.add("single=" + singleRel + ", child=" + childRel + "\n");
     }
   }
 
