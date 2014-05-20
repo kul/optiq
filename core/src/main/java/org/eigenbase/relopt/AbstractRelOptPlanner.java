@@ -25,6 +25,9 @@ import org.eigenbase.rel.*;
 import org.eigenbase.rel.metadata.*;
 import org.eigenbase.util.*;
 
+import com.google.common.base.Predicate;
+import com.google.common.collect.Iterables;
+
 import static org.eigenbase.util.Static.RESOURCE;
 
 /**
@@ -186,13 +189,18 @@ public abstract class AbstractRelOptPlanner implements RelOptPlanner {
   public void registerClass(RelNode node) {
     final Class<? extends RelNode> clazz = node.getClass();
     if (classes.add(clazz)) {
-      node.register(this);
+      onNewClass(node);
     }
     for (RelTrait trait : node.getTraitSet()) {
       if (traits.add(trait)) {
         trait.register(this);
       }
     }
+  }
+
+  /** Called when a new class of {@link RelNode} is seen. */
+  protected void onNewClass(RelNode node) {
+    node.register(this);
   }
 
   public RelTraitSet emptyTraitSet() {
@@ -380,6 +388,17 @@ public abstract class AbstractRelOptPlanner implements RelOptPlanner {
 
   protected MulticastRelOptListener getListener() {
     return listener;
+  }
+
+  /** Returns sub-classes of relational expression. */
+  public Iterable<Class<? extends RelNode>> subClasses(
+      final Class<? extends RelNode> clazz) {
+    return Iterables.filter(classes,
+        new Predicate<Class<? extends RelNode>>() {
+          public boolean apply(Class<? extends RelNode> input) {
+            return clazz.isAssignableFrom(input);
+          }
+        });
   }
 }
 

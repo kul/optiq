@@ -37,7 +37,7 @@ import net.hydromatic.linq4j.expressions.Expressions;
 import net.hydromatic.optiq.runtime.Spaces;
 import net.hydromatic.optiq.util.graph.*;
 
-import com.google.common.collect.ImmutableList;
+import com.google.common.collect.*;
 
 import static org.eigenbase.util.Stacks.*;
 
@@ -80,11 +80,14 @@ public class VolcanoPlanner extends AbstractRelOptPlanner {
   protected boolean impatient = false;
 
   /**
-   * List of all operands of all rules. Any operand can be an 'entry point' to
-   * a rule call, when a relexp is registered which matches the.
+   * Operands that apply to a given class of {@link RelNode}.
+   *
+   * <p>Any operand can be an 'entry point' to a rule call, when a RelNode is
+   * registered which matches the operand. This map allows us to narrow down
+   * operands based on the class of the RelNode.</p>
    */
-  private final List<RelOptRuleOperand> allOperands =
-      new ArrayList<RelOptRuleOperand>();
+  private final Multimap<Class<? extends RelNode>, RelOptRuleOperand>
+  classOperands = LinkedListMultimap.create();
 
   /**
    * List of all sets. Used only for debugging.
@@ -437,7 +440,7 @@ public class VolcanoPlanner extends AbstractRelOptPlanner {
     for (RelOptRule rule : ImmutableList.copyOf(ruleSet)) {
       removeRule(rule);
     }
-    this.allOperands.clear();
+    this.classOperands.clear();
     this.allSets.clear();
     this.mapDigestToRel.clear();
     this.mapRel2Subset.clear();
@@ -459,7 +462,14 @@ public class VolcanoPlanner extends AbstractRelOptPlanner {
     mapRuleDescription(rule);
 
     // Each of this rule's operands is an 'entry point' for a rule call.
-    allOperands.addAll(rule.getOperands());
+    // Register each operand against all concrete sub-classes that could match
+    // it.
+    for (RelOptRuleOperand operand : rule.getOperands()) {
+      for (Class<? extends RelNode> subClass
+          : subClasses(operand.getMatchedClass())) {
+        classOperands.put(subClass, operand);
+      }
+    }
 
     // If this is a converter rule, check that it operates on one of the
     // kinds of trait we are interested in, and if so, register the rule
@@ -487,11 +497,11 @@ public class VolcanoPlanner extends AbstractRelOptPlanner {
     unmapRuleDescription(rule);
 
     // Remove operands.
-    for (Iterator<RelOptRuleOperand> operandIter = allOperands.iterator();
-        operandIter.hasNext();) {
-      RelOptRuleOperand operand = operandIter.next();
-      if (operand.getRule().equals(rule)) {
-        operandIter.remove();
+    for (Iterator<RelOptRuleOperand> iter = classOperands.values().iterator();
+         iter.hasNext();) {
+      RelOptRuleOperand entry = iter.next();
+      if (entry.getRule().equals(rule)) {
+        iter.remove();
       }
     }
 
@@ -506,6 +516,21 @@ public class VolcanoPlanner extends AbstractRelOptPlanner {
       }
     }
     return true;
+  }
+
+  @Override protected void onNewClass(RelNode node) {
+    super.onNewClass(node);
+
+    // Create mappings so that instances of this class will match existing
+    // operands.
+    final Class<? extends RelNode> clazz = node.getClass();
+    for (RelOptRule rule : ruleSet) {
+      for (RelOptRuleOperand operand : rule.getOperands()) {
+        if (operand.getMatchedClass().isAssignableFrom(clazz)) {
+          classOperands.put(clazz, operand);
+        }
+      }
+    }
   }
 
   public boolean canConvert(RelTraitSet fromTraits, RelTraitSet toTraits) {
@@ -1307,7 +1332,7 @@ public class VolcanoPlanner extends AbstractRelOptPlanner {
   void fireRules(
       RelNode rel,
       boolean deferred) {
-    for (RelOptRuleOperand operand : allOperands) {
+    for (RelOptRuleOperand operand : classOperands.get(rel.getClass())) {
       if (operand.matches(rel)) {
         final VolcanoRuleCall ruleCall;
         if (deferred) {
@@ -1538,6 +1563,10 @@ public class VolcanoPlanner extends AbstractRelOptPlanner {
     while (set.equivalentSet != null) {
       set = set.equivalentSet;
     }
+
+    // Allow each rel to register its own rules.
+    registerClass(rel);
+
     registerCount++;
     final int subsetBeforeCount = set.subsets.size();
     RelSubset subset = asd(rel, set);

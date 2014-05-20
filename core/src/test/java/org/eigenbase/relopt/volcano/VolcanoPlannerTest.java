@@ -121,6 +121,7 @@ public class VolcanoPlannerTest {
    * Tests a rule that is fired once per subset (whereas most rules are fired
    * once per rel in a set or rel in a subset)
    */
+  @Ignore
   @Test public void testSubsetRule() {
     VolcanoPlanner planner = new VolcanoPlanner();
     planner.addRelTraitDef(ConventionTraitDef.INSTANCE);
