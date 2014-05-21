@@ -46,7 +46,8 @@ public abstract class AbstractRelOptPlanner implements RelOptPlanner {
    * Maps rule description to rule, just to ensure that rules' descriptions
    * are unique.
    */
-  private final Map<String, RelOptRule> mapDescToRule;
+  private final Map<String, RelOptRule> mapDescToRule =
+      new HashMap<String, RelOptRule>();
 
   protected final RelOptCostFactory costFactory;
 
@@ -58,7 +59,7 @@ public abstract class AbstractRelOptPlanner implements RelOptPlanner {
 
   @SuppressWarnings("unchecked")
   private final Set<Class<? extends RelNode>> classes =
-      new HashSet<Class<? extends RelNode>>(Arrays.asList(RelNode.class, RelSubset.class));
+      new HashSet<Class<? extends RelNode>>();
 
   private final Set<RelTrait> traits = new HashSet<RelTrait>();
 
@@ -71,11 +72,15 @@ public abstract class AbstractRelOptPlanner implements RelOptPlanner {
    */
   protected AbstractRelOptPlanner(RelOptCostFactory costFactory) {
     this.costFactory = costFactory;
-    mapDescToRule = new HashMap<String, RelOptRule>();
 
     // In case no one calls setCancelFlag, set up a
     // dummy here.
     cancelFlag = new CancelFlag();
+
+    // Add abstract RelNode classes. No RelNodes will ever be registered with
+    // these types, but some operands may use them.
+    classes.add(RelNode.class);
+    classes.add(RelSubset.class);
   }
 
   //~ Methods ----------------------------------------------------------------

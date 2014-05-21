@@ -217,27 +217,10 @@ public class VolcanoPlanner extends AbstractRelOptPlanner {
     return new VolcanoPlannerPhaseRuleMappingInitializer() {
       public void initialize(
           Map<VolcanoPlannerPhase, Set<String>> phaseRuleMap) {
-        Set<String> preProcessMdrPhaseRules =
-            phaseRuleMap.get(VolcanoPlannerPhase.PRE_PROCESS_MDR);
-
-        // Fire this rule early so we don't waste time fiddling with
-        // alternate join implementations.  The MDR queries are tuned
-        // to want this rule's output.
-        preProcessMdrPhaseRules.add("MedMdrJoinRule");
-        preProcessMdrPhaseRules.add("IterCalcRule");
-        preProcessMdrPhaseRules.add("ProjectToCalcRule");
-        preProcessMdrPhaseRules.add("FilterToCalcRule");
-        preProcessMdrPhaseRules.add("MergeCalcRule");
-
-        Set<String> cleanupPhaseRules =
-            phaseRuleMap.get(VolcanoPlannerPhase.CLEANUP);
-
-        // Cleanup pass to remove trivial projects and merge calcs.
-        // Helps the planner concentrate on these easy tasks.
-        cleanupPhaseRules.add("RemoveTrivialProjectRule");
-        cleanupPhaseRules.add("MergeCalcRule");
-        cleanupPhaseRules.add("FennelCalcRule");
-        cleanupPhaseRules.add("IterCalcRule");
+        // Disable all phases except OPTIMIZE by adding one useless rule name.
+        phaseRuleMap.get(VolcanoPlannerPhase.PRE_PROCESS_MDR).add("xxx");
+        phaseRuleMap.get(VolcanoPlannerPhase.PRE_PROCESS).add("xxx");
+        phaseRuleMap.get(VolcanoPlannerPhase.CLEANUP).add("xxx");
       }
     };
   }

@@ -121,7 +121,6 @@ public class VolcanoPlannerTest {
    * Tests a rule that is fired once per subset (whereas most rules are fired
    * once per rel in a set or rel in a subset)
    */
-  @Ignore
   @Test public void testSubsetRule() {
     VolcanoPlanner planner = new VolcanoPlanner();
     planner.addRelTraitDef(ConventionTraitDef.INSTANCE);
@@ -147,12 +146,22 @@ public class VolcanoPlannerTest {
     planner.setRoot(convertedRel);
     RelNode result = planner.chooseDelegate().findBestExp();
     assertTrue(result instanceof PhysSingleRel);
-    assertThat(buf.size(), equalTo(2));
-    assertThat(buf,
+    assertThat(sort(buf),
         equalTo(
-            Arrays.asList(
-                "single=rel#3:NoneSingleRel.NONE(child=rel#2:Subset#0.NONE), child=rel#2:Subset#0.NONE",
+            sort(
+                "single=rel#9:PhysSingleRel.PHYS(child=rel#7:Subset#0.PHYS), child=rel#7:Subset#0.PHYS",
+                "single=rel#9:PhysSingleRel.PHYS(child=rel#7:Subset#0.PHYS), child=rel#2:Subset#0.NONE",
                 "single=rel#3:NoneSingleRel.NONE(child=rel#2:Subset#0.NONE), child=rel#2:Subset#0.NONE")));
+  }
+
+  private static <E extends Comparable> List<E> sort(List<E> list) {
+    final List<E> list2 = new ArrayList<E>(list);
+    Collections.sort(list2);
+    return list2;
+  }
+
+  private static <E extends Comparable> List<E> sort(E... es) {
+    return sort(Arrays.asList(es));
   }
 
   /**
@@ -648,7 +657,7 @@ public class VolcanoPlannerTest {
     private final List<String> buf;
 
     SubsetRule(List<String> buf) {
-      super(operand(NoneSingleRel.class, operand(RelSubset.class, any())));
+      super(operand(TestSingleRel.class, operand(RelSubset.class, any())));
       this.buf = buf;
     }
 
@@ -658,8 +667,8 @@ public class VolcanoPlannerTest {
 
     public void onMatch(RelOptRuleCall call) {
       // Do not transform to anything; just log the calls.
-      NoneSingleRel singleRel = call.rel(0);
-      RelNode childRel = call.rel(1);
+      TestSingleRel singleRel = call.rel(0);
+      RelSubset childRel = call.rel(1);
       assertThat(call.rels.length, equalTo(2));
       buf.add("single=" + singleRel + ", child=" + childRel);
     }
