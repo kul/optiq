@@ -147,8 +147,12 @@ public class VolcanoPlannerTest {
     planner.setRoot(convertedRel);
     RelNode result = planner.chooseDelegate().findBestExp();
     assertTrue(result instanceof PhysSingleRel);
-    assertThat(buf.size(), equalTo(1));
-    assertThat(buf.toString(), equalTo("xxx"));
+    assertThat(buf.size(), equalTo(2));
+    assertThat(buf,
+        equalTo(
+            Arrays.asList(
+                "single=rel#3:NoneSingleRel.NONE(child=rel#2:Subset#0.NONE), child=rel#2:Subset#0.NONE",
+                "single=rel#3:NoneSingleRel.NONE(child=rel#2:Subset#0.NONE), child=rel#2:Subset#0.NONE")));
   }
 
   /**
@@ -657,7 +661,7 @@ public class VolcanoPlannerTest {
       NoneSingleRel singleRel = call.rel(0);
       RelNode childRel = call.rel(1);
       assertThat(call.rels.length, equalTo(2));
-      buf.add("single=" + singleRel + ", child=" + childRel + "\n");
+      buf.add("single=" + singleRel + ", child=" + childRel);
     }
   }
 

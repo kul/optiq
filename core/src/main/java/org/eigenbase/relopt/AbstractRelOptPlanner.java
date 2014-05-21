@@ -23,6 +23,7 @@ import java.util.regex.*;
 
 import org.eigenbase.rel.*;
 import org.eigenbase.rel.metadata.*;
+import org.eigenbase.relopt.volcano.RelSubset;
 import org.eigenbase.util.*;
 
 import com.google.common.base.Predicate;
@@ -55,8 +56,9 @@ public abstract class AbstractRelOptPlanner implements RelOptPlanner {
 
   private CancelFlag cancelFlag;
 
+  @SuppressWarnings("unchecked")
   private final Set<Class<? extends RelNode>> classes =
-      new HashSet<Class<? extends RelNode>>();
+      new HashSet<Class<? extends RelNode>>(Arrays.asList(RelNode.class, RelSubset.class));
 
   private final Set<RelTrait> traits = new HashSet<RelTrait>();
 

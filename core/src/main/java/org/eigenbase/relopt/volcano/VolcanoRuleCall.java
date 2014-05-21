@@ -20,6 +20,7 @@ package org.eigenbase.relopt.volcano;
 import java.util.*;
 import java.util.logging.*;
 
+import com.google.common.collect.ImmutableList;
 import org.eigenbase.rel.*;
 import org.eigenbase.relopt.*;
 import org.eigenbase.util.*;
@@ -283,7 +284,7 @@ public class VolcanoRuleCall extends RelOptRuleCall {
           getRule().operands.get(previousOperandOrdinal);
       RelOptRuleOperand operand = getRule().operands.get(operandOrdinal);
 
-      Collection<RelNode> successors;
+      final Collection<? extends RelNode> successors;
       if (ascending) {
         assert previousOperand.getParent() == operand;
         final RelNode childRel = rels[previousOperandOrdinal];
@@ -296,11 +297,15 @@ public class VolcanoRuleCall extends RelOptRuleCall {
         if (operand.ordinalInParent < inputs.size()) {
           RelSubset subset =
               (RelSubset) inputs.get(operand.ordinalInParent);
-          successors = subset.getRelList();
+          if (operand.getMatchedClass() == RelSubset.class) {
+            successors = subset.set.subsets;
+          } else {
+            successors = subset.getRelList();
+          }
         } else {
           // The operand expects parentRel to have a certain number
           // of inputs and it does not.
-          successors = Collections.emptyList();
+          successors = ImmutableList.of();
         }
       }
 
